@@ -143,7 +143,7 @@ Save your wildcards in the wildcards folder. To avoid issues, use only a-z in yo
                                 line = line[:-3]
                             else:
                                 line = line[:-2]
-                            lockedline = x+1
+                            lockedline = x
                     for x in range(100):
                         if line.startswith(str(x) + "_"):
                             if x > 9:
