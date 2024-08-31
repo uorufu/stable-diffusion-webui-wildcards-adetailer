@@ -71,17 +71,21 @@ Save your wildcards in the wildcards folder. To avoid issues, use only a-z in yo
         wca_enable.change(fn=lambda value:[gr.update(interactive=value) for _ in outs],inputs=[wca_enable],outputs=outs, queue=False)
         return [wca_enable, wca_seed, wca_iterative_unlock, wca_linelock]
 
-    def replace_wildcard(self, text, rlist, replacement_file):
+    def replace_wildcard(self, text, rlist, replacement_file, lock):
         with open(replacement_file, encoding="utf8") as f:
             textarray = []
             textarray = f.read().splitlines()
-            nline = round(len(textarray) * rlist)
-            if rlist >= 1:
-                nline = rlist
-                if rlist > len(textarray):
-                    nline = rlist % len(textarray)
-                    if nline == 0:
-                        nline = len(textarray)
+            if lock > 0:
+                nline = lock
+                lock = 0
+            else:  
+                nline = round(len(textarray) * rlist)
+                if rlist >= 1:
+                    nline = rlist
+                    if rlist > len(textarray):
+                        nline = rlist % len(textarray)
+                        if nline == 0:
+                            nline = len(textarray)
             print(bcolors.OK + "[*] " + bcolors.RESET + bcolors.YELLOW + f"Line {nline:02d} " + ( f"{text}.txt" if len(text)<15 else f"{text[:14]}_.txt" ) + ( "\t\t" if len(text)<9 else "\t" ) + f"► {textarray[nline-1][:100]}" + bcolors.RESET)
         return textarray[nline-1]
 
@@ -117,20 +121,29 @@ Save your wildcards in the wildcards folder. To avoid issues, use only a-z in yo
             text = text.split("__")
             i = 0
             n = 0
+            
             while i < len(text):
                 line = str(text[i])
                 if " " not in line and len(line) > 0:
                     replacement_file = os.path.join(wildcards_dir, f"{line}.txt")
+                    lockedline = 0
                     if os.path.exists(replacement_file):      
                         if n > 99:
                             n = n % 99
-                        text[i] = self.replace_wildcard(line, rand_list[n], replacement_file)
+                        text[i] = self.replace_wildcard(line, rand_list[n], replacement_file, lockedline)
                         n = n + 1
                     if line.startswith("$_"):
                         line = line[2:]
                         replacement_file = os.path.join(wildcards_dir, f"{line}.txt")
                         if os.path.exists(replacement_file):
-                            text[i] = self.replace_wildcard(line, fixedline, replacement_file)
+                            text[i] = self.replace_wildcard(line, fixedline, replacement_file, lockedline)
+                    for x in range(100):
+                        if line.endswith("_" + str(x)):
+                            if x > 9:
+                                line = line[:-3]
+                            else:
+                                line = line[:-2]
+                            lockedline = x+1
                     for x in range(100):
                         if line.startswith(str(x) + "_"):
                             if x > 9:
@@ -139,7 +152,7 @@ Save your wildcards in the wildcards folder. To avoid issues, use only a-z in yo
                                 line = line[2:]
                             replacement_file = os.path.join(wildcards_dir, f"{line}.txt")
                             if os.path.exists(replacement_file):
-                                text[i] = self.replace_wildcard(line, rand_list_tiers[x], replacement_file)
+                                text[i] = self.replace_wildcard(line, rand_list_tiers[x], replacement_file, lockedline)
                     if len(p.all_seeds) > 1:
                         p.all_prompts[j] = ''.join(text)
                     else:
