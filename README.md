@@ -1,6 +1,14 @@
 #### Wildcards Adetailer fix
 
-An personal fork I made to make wildcards extension work better with Adetailer.
+A personal fork I made to make wildcards extension work better with Adetailer.
+
+# Update V. 1.2
+
+locking a wildcard: `__0_wildcard_12__` will lock to the 12th line of the wildcard.txt file.
+
+Cleaned up code a bit as it was a bit of a mess.
+
+
 
 # Upate:
 
