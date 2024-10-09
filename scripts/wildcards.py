@@ -112,7 +112,6 @@ If you want to change the directory of your wildcards add this to your cmd flags
                 original_seed=p.all_seeds[0]
             print (bcolors.OK + f"[*] Batchsize {(p.n_iter * p.batch_size)}" + bcolors.RESET)
             print (bcolors.OK + f"[*] Starting Seed: {original_seed}" + bcolors.RESET)
-        lockedline = 0
         for j, text in enumerate(p.all_prompts):
             print (bcolors.OK + "[*] " + bcolors.RESET + bcolors.YELLOW + f"Current Seed: {p.all_seeds[j]}" + bcolors.RESET)
             random.seed(wca_lock_seed if wca_enable == True and wca_lock_seed > 0 else p.all_seeds[j])
@@ -130,6 +129,7 @@ If you want to change the directory of your wildcards add this to your cmd flags
             if wca_enable == True and wca_iterative_unlock == False:
                 fixedline = wca_linelock
             text = text.split("__")
+            lockedline = 0
             i = 0
             n = 0
             linearray = []
