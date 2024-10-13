@@ -100,7 +100,7 @@ If you want to change the directory of your wildcards add this to your cmd flags
                         nline = rlist % len(textarray)
                         if nline == 0:
                             nline = len(textarray)
-            printtext = "Seed:" + str(currentseed) + " Line:" + str(nline) + " File:" + str(text) + ".txt"
+            printtext = "Line " + str(nline) + " from " + str(text) + ".txt (seed:" + str(currentseed) + ")"
             if len(printtext)<20:
                 tabs = "\t\t\t\t\t"
             elif len(printtext)<28:
