@@ -147,7 +147,7 @@ If you want to change the directory of your wildcards add this to your cmd flags
         linearray = []
         text = []
         useprompts = []
-        if len(p.all_seeds) > 1 and ( "__" in str(p.all_prompts or "__" in str(p.all_negative_prompts) ):
+        if len(p.all_seeds) > 1 and ( "__" in str(p.all_prompts) or "__" in str(p.all_negative_prompts) ):
             original_batchsize = p.n_iter * p.batch_size
             original_seed = p.all_seeds[0]
             print (bcolors.YELLOW + f"[*] Batchsize {original_batchsize}" + bcolors.RESET)
