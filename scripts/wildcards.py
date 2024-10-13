@@ -37,24 +37,21 @@ class WildcardsScript(scripts.Script):
                     wca_iterative_unlock = gr.Checkbox(label="Don't lock iterative wildcards", value=False, elem_id=elem+"iterativeunlock", interactive=False)
                 with gr.Accordion('More info about Wildcards for adetailer',open=False,elem_id=elem+'help'):
                     gr.Markdown('''
+#Wildcards for Adetailer:
 
-# Methods:
+- Now works in normal prompts, negative prompts as well as hires prompts.
+
+## Methods:
 
 - Depriciated use: `__wildcard__`
 - Tiered wildcards: `__0_wildcard__` up to `__99_wildcard__`
 - Iterative wildcard: `__$_wildcard__`
 - Specific line lock: `__wildcard_12__` or `__0_wildcard_12__` or `__$_wildcard_12__` (12 can be any number)
 
-
-## Random generation method:
-
-The random generation method just uses a seeding method based on the generation seed. Which means that every seed number will always have the same random results. A float between 0-1 will be randomly generated and that will be multiplied by the length of your txt file in order to decide which line to choose. 
-
-
 ## Explanation of methods:
 
 - Normal use is only really still here because people might be used to it. Personally I recommend using tiered wildcards only. The random generation for normal wildcards use a total of 100 unshared random seeds. So if you use more than 100 wildcards (lol), seeds will get reused.
-  Note however that normal wildcards are order sensative when it comes to adetailer, unlike tiered wildcards. (first normal wildcard in mainprompt shares same random generation as first normal wildcard in adetailer.)
+  Note however that normal wildcards are order sensitive when it comes to adetailer, unlike tiered wildcards. (first normal wildcard in mainprompt shares same random generation as first normal wildcard in adetailer.)
   It's really better to just use tiered wildcards.
 
 - Tiered use is a great way to split wildcards into parts or match wildcards with wildcards in adetailer. If you need to use only parts in adetailer prompt or want to seperate lora's. If you have three text files with 20 lines each and put them all in the same tier, let's say `__4_lora__` `__4_body__` in main prompt and `__4_face__` in adetailer prompt, then every time the same line number will be chosen for each of these wildcards.
@@ -66,16 +63,24 @@ The random generation method just uses a seeding method based on the generation 
 
 - Specific line lock is used to lock the wildcard to a specific line in your wildcard txt file, it ignores all randomization automatically and always chooses that specific line. `__wildcard_12__` will choose the 12th line from the txt file.
 
+## Random generation method:
+
+The random generation method just uses a seeding method based on the generation seed. Which means that every seed number will always have the same random results. A float between 0-1 will be randomly generated and that will be multiplied by the length of your txt file in order to decide which line to choose. 
+
 ## Seed locking:
 
 The seed locking feature is for if you have a particular result and want to generate more of the same image with that result using other seeds. You can manually input the seed you want to lock (`Which seed to lock`) and then generate images in other seeds based on the random generation of the seed you locked. Don't forget to manually lock the iterative wildcards to the proper line as well as otherwise they'll get locked to line 1 (`Specific iterative line number to lock`).
 
 You can enable iterative wildcards to work while locking the random generation by selecing `Don't lock iterative wildcards`.
 
-Save your wildcards in the wildcards folder. To avoid issues, use only a-z in your txt filename.
+Save your wildcards in the wildcards folder. To avoid issues, use only a-z in your txt filename. 
+Although it should be fine as long as you don't use _ in txt filename or use an int number. so no 1.txt, or something_somethingelse.txt, definately don't use something_1.txt. XD 
+
+## CMD Flags:
 
 If you want to change the directory of your wildcards add this to your cmd flags and change the directory:
---wildcards-dir "c:\path\to\wildcards"
+
+- --wildcards-dir "c:\path\\to\wildcards"
                     ''')
         outs = [wca_seed,wca_iterative_unlock,wca_linelock]
         wca_enable.change(fn=lambda value:[gr.update(interactive=value) for _ in outs],inputs=[wca_enable],outputs=outs, queue=False)
