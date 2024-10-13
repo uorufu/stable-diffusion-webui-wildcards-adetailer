@@ -100,7 +100,7 @@ If you want to change the directory of your wildcards add this to your cmd flags
                         nline = rlist % len(textarray)
                         if nline == 0:
                             nline = len(textarray)
-            printtext = "Seed " + str(currentseed) + " File " + str(text) + ".txt"                
+            printtext = "Seed:" + str(currentseed) + " Line:" + str(nline) + " File:" + str(text) + ".txt"
             if len(printtext)<20:
                 tabs = "\t\t\t\t\t"
             elif len(printtext)<28:
@@ -112,13 +112,13 @@ If you want to change the directory of your wildcards add this to your cmd flags
             else:
                 tabs = "\t"
             if prompttype == 1:
-                print(bcolors.OK + "[*] " + bcolors.RESET + bcolors.YELLOW + printtext + tabs + f"({str(len(printtext))})►" + f"{textarray[nline-1][:100]}" + bcolors.RESET)
+                print(bcolors.OK + "[*] " + bcolors.RESET + bcolors.YELLOW + printtext + tabs + "►" + f"{textarray[nline-1][:100]}" + bcolors.RESET)
             if prompttype == 2:
-                print(bcolors.RED + "[*] " + bcolors.RESET + bcolors.YELLOW + printtext + tabs + f"({str(len(printtext))})►" + f"{textarray[nline-1][:100]}" + bcolors.RESET)
+                print(bcolors.RED + "[*] " + bcolors.RESET + bcolors.YELLOW + printtext + tabs + "►" + f"{textarray[nline-1][:100]}" + bcolors.RESET)
             if prompttype == 3:
-                print(bcolors.CYAN + "[*] " + bcolors.RESET + bcolors.YELLOW + printtext + tabs + f"({str(len(printtext))})►" + f"{textarray[nline-1][:100]}" + bcolors.RESET)
+                print(bcolors.CYAN + "[*] " + bcolors.RESET + bcolors.YELLOW + printtext + tabs + "►" + f"{textarray[nline-1][:100]}" + bcolors.RESET)
             if prompttype == 4:
-                print(bcolors.PURPLE + "[*] " + bcolors.RESET + bcolors.YELLOW + printtext + tabs + f"({str(len(printtext))})►" + f"{textarray[nline-1][:100]}" + bcolors.RESET)
+                print(bcolors.PURPLE + "[*] " + bcolors.RESET + bcolors.YELLOW + printtext + tabs + "►" + f"{textarray[nline-1][:100]}" + bcolors.RESET)
         return textarray[nline-1]
 
     def process(self, p, wca_enable, wca_lock_seed, wca_iterative_unlock, wca_linelock):
