@@ -208,7 +208,7 @@ If you want to change the directory of your wildcards add this to your cmd flags
                 e = len(text)
                 while i < e:
                     line = str(text[i])
-                    if " " not in line and len(line) > 0 and (i % 2) != 0:
+                    if " " not in line and len(line) > 0:
                         linearray = line.split("_")
                         if len(linearray) == 1:
                             if not os.path.exists(os.path.join(wildcards_dir, f"{linearray[0]}.txt")):
