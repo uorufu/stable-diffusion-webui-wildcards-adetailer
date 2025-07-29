@@ -2,11 +2,37 @@
 
 A personal fork I made to make wildcards extension work better with Adetailer.
 
+# Final final update (probably)
+
+Added nesting support. Can now call on wildcards inside wildcards.
+
+example:
+prompt before wildcards:
+`__0_wildcard__`
+
+test.txt
+line 1: `HELLO WORLD`
+
+wildcard.txt
+line 1: `This is a prompt with a wildcard __0_test__ you can infinitely nest wildcards inside wildcards inside wildcards (in theory)`
+
+prompt after wildcards:
+`This is a prompt with a wildcard HELLO WORLD you can infinitely nest wildcards inside wildcards inside wildcards (in theory)`
+
+
+
+    Be careful of infinite loops when calling a wildcard from inside itself.
+    wildcard.txt
+    line 1: `__wildcard_1__`
+    prompt:
+    `__wildcard_1__`
+    This is NOT a good time.
+
+
+
 # Final update (probably)
 
 Added negative and hires prompt support
-
-
 
 
 # Update
