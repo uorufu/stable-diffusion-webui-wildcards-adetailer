@@ -152,6 +152,7 @@ If you want to change the directory of your wildcards add this to your cmd flags
         linearray = []
         text = []
         useprompts = []
+        embeddedwc_string = []
         if len(p.all_seeds) > 1 and ( "__" in str(p.all_prompts) or "__" in str(p.all_negative_prompts) ):
             original_batchsize = p.n_iter * p.batch_size
             original_seed = p.all_seeds[0]
@@ -204,7 +205,8 @@ If you want to change the directory of your wildcards add this to your cmd flags
                 lockedline = 0
                 i = 0
                 n = 0
-                while i < len(text):
+                e = len(text)
+                while i < e:
                     line = str(text[i])
                     if " " not in line and len(line) > 0 and (i % 2) != 0:
                         linearray = line.split("_")
@@ -253,6 +255,17 @@ If you want to change the directory of your wildcards add this to your cmd flags
                             else:
                                 noline = str(linearray[1])
                                 print (bcolors.RED + "[*] Wildcard txt file not found: " + noline + ".txt" + bcolors.RESET)
+                        embeddedwc_count = str(text[i]).count('__')
+                        if embeddedwc_count >= 2:
+                            text[i] = " " + str(text[i]) + " "
+                            embeddedwc_string = text[i].split("__")
+                            text[i] = " "
+                            e = e + len(embeddedwc_string)
+                            index = i+1
+                            for item in embeddedwc_string:
+                                text.insert(index, item)
+                                index += 1
+                            embeddedwc_count = 0
                         if k == 0:
                             if p.n_iter > 1 or p.batch_size > 1:
                                 p.all_prompts[j] = ''.join(text)
