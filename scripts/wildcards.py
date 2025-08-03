@@ -2,11 +2,10 @@ import os
 import random
 import sys
 import gradio as gr
+from modules import scripts, script_callbacks, shared, ui
+from modules.ui_components import InputAccordion
 
-from modules import scripts, script_callbacks, shared
-
-warned_about_files = {}
-repo_dir = scripts.basedir()
+wc_dir = shared.cmd_opts.wildcards_dir or os.path.join(scripts.basedir(), "wildcards")
 
 class bcolors:
     OK = "\033[92m"
@@ -18,7 +17,7 @@ class bcolors:
 
 class WildcardsScript(scripts.Script):
     def title(self):
-        return "Simple wildcards for adetailer"
+        return "Wildcards with Adetailer Support"
 
     def show(self, is_img2img):
         return scripts.AlwaysVisible
@@ -26,40 +25,48 @@ class WildcardsScript(scripts.Script):
     def ui(self, is_img2img):
         elem = 'wildcard_'+("img2img_" if is_img2img else "txt2img_")
         with gr.Row(elem_id=elem+"wildcard_adetailer_row"):
-            with gr.Accordion("Wildcards for adetailer", open=False, elem_id=elem+"wildcard_adetailer_accordion"):
+            with gr.Accordion("Wildcards for Adetailer", open=False, elem_id=elem+"wildcard_adetailer_accordion"):
                 with gr.Row():
-                    wca_enable = gr.Checkbox(label="Enable locking of wildcards randomization to a specific seed", value=False, elem_id=elem+"enable", interactive=True)
+                    wca_enabled = gr.Checkbox(scale=1, label="Enable Lock", value=False, elem_id=elem+"enabled", interactive=True)
+                    wca_seed = gr.Number(scale=9, precision=0, label="Seed:", value=0, interactive=True, elem_id=elem+"seed")
                 with gr.Row():
-                    wca_seed = gr.Number(precision=0, label="Which seed to lock", interactive=False, elem_id=elem+"seed")
-                with gr.Row():
-                    wca_linelock = gr.Number(value=1, precision=0, label="Specific iterative line number to lock", interactive=False, elem_id=elem+"linelock")
-                with gr.Row():
-                    wca_iterative_unlock = gr.Checkbox(label="Don't lock iterative wildcards", value=False, elem_id=elem+"iterativeunlock", interactive=False)
-                with gr.Accordion('More info about Wildcards for adetailer',open=False,elem_id=elem+'help'):
+                    wca_outsep = gr.Textbox(label="Outer Separator:", value="__", interactive=True, elem_id=elem+"outsep")
+                    wca_insep = gr.Textbox(label="Inner Separator:", value="_", interactive=True, elem_id=elem+"insep")
+                with gr.Accordion('More info about Wildcards for Adetailer',open=False,elem_id=elem+'help'):
                     gr.Markdown('''
 #Wildcards for Adetailer:
 
-- Now works in normal prompts, negative prompts as well as hires prompts.
-
 ## Methods:
 
-- Depriciated use: `__wildcard__`
-- Tiered wildcards: `__0_wildcard__` up to `__99_wildcard__`
-- Iterative wildcard: `__$_wildcard__`
-- Specific line lock: `__wildcard_12__` or `__0_wildcard_12__` or `__$_wildcard_12__` (12 can be any number)
+- Vanilla wildcard:   (Depreciated, but still functional. Completely random even when generating the same seed multiple times)
+    `__wildcard__`
+- Tiered wildcard:   (Preferred method): 
+    `__0_wildcard__` up to `__99_wildcard__`
+- Iterative wildcard: (iterates each line of a wildcard txt file when making a batch
+    `__$_wildcard__`
+- Specific line lock:
+    `__wildcard_12__` or `__0_wildcard_12__` or `__$_wildcard_12__` (12 = line of wildcard txt file to lock)
 
-## Explanation of methods:
+## Supports:
+- Normal prompts (pos+neg), HR prompts (pos+neg) and Adetailer prompts (pos+neg)
+- Nesting wildcards inside wildcards
+- Ability to change inner `_` and outer `__` separators in the menu. (Inner can conflict with filenames and outer can conflict with prompt text.)
 
-- Normal use is only really still here because people might be used to it. Personally I recommend using tiered wildcards only. The random generation for normal wildcards use a total of 100 unshared random seeds. So if you use more than 100 wildcards (lol), seeds will get reused.
-  Note however that normal wildcards are order sensitive when it comes to adetailer, unlike tiered wildcards. (first normal wildcard in mainprompt shares same random generation as first normal wildcard in adetailer.)
-  It's really better to just use tiered wildcards.
+## Incompatibility:
+- Do not use `_`character in wildcard txt file names. (or whichever INNER separator you input in the menu)
+- Does not work properly with Batch Size. Use Batch Count instead when making batches.
+- Do not use `__` anywhere else in the prompt. (or whichever OUTER separator you input in the menu)
 
-- Tiered use is a great way to split wildcards into parts or match wildcards with wildcards in adetailer. If you need to use only parts in adetailer prompt or want to seperate lora's. If you have three text files with 20 lines each and put them all in the same tier, let's say `__4_lora__` `__4_body__` in main prompt and `__4_face__` in adetailer prompt, then every time the same line number will be chosen for each of these wildcards.
+
+
+## Detailed explanation of methods:
+
+- Tiered use is a great way to split wildcards into parts or match wildcards with wildcards in adetailer. If you need to use only parts in adetailer prompt or want to seperate lora's. If you have three txt files with 20 lines each and put them all in the same tier, let's say `__4_lora__` `__4_body__` in main prompt and `__4_face__` in adetailer prompt, then every time the same line number will be chosen for each of these wildcards.
   You can use up to 100 different tiers `(0 - 99)` which each having their own random generation seeding.
   Tiered wildcards are not order sensative. everything on the same tier shares the same random generation no matter what prompt it is in.
   Remember if you try to match multiple txt files in one tier and match them up, the txt files naturally have to have the same number of lines.
 
-- Iterative wildcard is a way to have a wildcard go through the lines one by one instead of randomly choosing one. This can be great for making large batches and you want one result for each line in your wildcard text file.
+- Iterative wildcard is a way to have a wildcard go through the lines one by one instead of randomly choosing one. This can be great for making large batches and you want one result for each line in your wildcard txt file.
 
 - Specific line lock is used to lock the wildcard to a specific line in your wildcard txt file, it ignores all randomization automatically and always chooses that specific line. `__wildcard_12__` will choose the 12th line from the txt file.
 
@@ -69,231 +76,200 @@ The random generation method just uses a seeding method based on the generation 
 
 ## Seed locking:
 
-The seed locking feature is for if you have a particular result and want to generate more of the same image with that result using other seeds. You can manually input the seed you want to lock (`Which seed to lock`) and then generate images in other seeds based on the random generation of the seed you locked. Don't forget to manually lock the iterative wildcards to the proper line as well as otherwise they'll get locked to line 1 (`Specific iterative line number to lock`).
-
-You can enable iterative wildcards to work while locking the random generation by selecing `Don't lock iterative wildcards`.
-
-Save your wildcards in the wildcards folder. To avoid issues, use only a-z in your txt filename. 
-Although it should be fine as long as you don't use _ in txt filename or use an int number. so no 1.txt, or something_somethingelse.txt, definately don't use something_1.txt. XD 
+The seed locking feature is for if you have a particular result and want to generate more of the same image with that result using other seeds. You can manually input the seed you want to lock (`Lock seed`) and then generate images in other seeds based on the random generation of the seed you locked. (Will not lock iterative wildcards. You can lock them manually using the 'specific line lock' feature (`__$_wildcard_2__`) 
 
 ## CMD Flags:
 
-If you want to change the directory of your wildcards add this to your cmd flags and change the directory:
+If you want to change the directory of your wildcards from the wildcards folder inside extension folder add this to your cmd flags and change the directory (or symlink externally):
 
-- --wildcards-dir "c:\path\\to\wildcards"
+- --wildcards-dir "c:\path\to\wildcards"
                     ''')
-        outs = [wca_seed,wca_iterative_unlock,wca_linelock]
-        wca_enable.change(fn=lambda value:[gr.update(interactive=value) for _ in outs],inputs=[wca_enable],outputs=outs, queue=False)
-        return [wca_enable, wca_seed, wca_iterative_unlock, wca_linelock]
+        return [wca_enabled, wca_seed, wca_outsep, wca_insep]
 
-    def replace_wildcard(self, text, rlist, replacement_file, lock, currentseed, prompttype):
-        with open(replacement_file, encoding="utf8") as f:
-            textarray = []
-            textarray = f.read().splitlines()
-            if lock > 0:
-                nline = lock
-                if nline > len(textarray):
-                    nline = nline % len(textarray)
-                    if nline == 0:
-                        nline = len(textarray)
-                lock = 0
-            else:  
-                nline = round(len(textarray) * rlist)
-                if rlist >= 1:
-                    nline = rlist
-                    if rlist > len(textarray):
-                        nline = rlist % len(textarray)
-                        if nline == 0:
-                            nline = len(textarray)
-            printtext = "Line " + str(nline) + " from " + str(text) + ".txt (seed:" + str(currentseed) + ")"
-            if len(printtext)<20:
-                tabs = "\t\t\t\t\t"
-            elif len(printtext)<28:
-                tabs = "\t\t\t\t"
-            elif len(printtext)<36:
-                tabs = "\t\t\t"
-            elif len(printtext)<44:
-                tabs = "\t\t"
-            else:
-                tabs = "\t"
-            if prompttype == 1:
-                print(bcolors.OK + "[*] " + bcolors.RESET + bcolors.YELLOW + printtext + tabs + "►" + f"{textarray[nline-1][:100]}" + bcolors.RESET)
-            if prompttype == 2:
-                print(bcolors.RED + "[*] " + bcolors.RESET + bcolors.YELLOW + printtext + tabs + "►" + f"{textarray[nline-1][:100]}" + bcolors.RESET)
-            if prompttype == 3:
-                print(bcolors.CYAN + "[*] " + bcolors.RESET + bcolors.YELLOW + printtext + tabs + "►" + f"{textarray[nline-1][:100]}" + bcolors.RESET)
-            if prompttype == 4:
-                print(bcolors.PURPLE + "[*] " + bcolors.RESET + bcolors.YELLOW + printtext + tabs + "►" + f"{textarray[nline-1][:100]}" + bcolors.RESET)
-        return textarray[nline-1]
+    def filecheck(self, file):
+        if not os.path.exists(os.path.join(wc_dir, f"{file}.txt")):
+            return False
+        else:
+            return True
 
-    def process(self, p, wca_enable, wca_lock_seed, wca_iterative_unlock, wca_linelock):
-        original_prompt = p.all_prompts[0]
-        original_negative_prompt = p.all_negative_prompts[0]
+    def wc_error(self, wc_sl, wc_errortype, wca_outsep):
+        if wc_errortype == 1:
+            print (bcolors.RED + "[*] Wildcard missing: " + repr(wc_sl)[1:-1] + ".txt is not found." + bcolors.RESET)
+        if wc_errortype == 2:
+            print (bcolors.RED + "[*] Illegal wildcard found: " + wca_outsep + repr(wc_sl)[1:-1] + wca_outsep + " is not valid." + bcolors.RESET)
+        return
+
+    def replace_wildcard(self, wc_file, wc_rand, wc_lock, wc_cseed, wc_ptype, wc_mode):
+            wc_path = os.path.join(wc_dir, f"{wc_file}.txt")
+            with open(wc_path, encoding="utf8") as f:
+                wc_lines = f.read().splitlines()
+                if wc_lock > 0:
+                    wc_line = wc_lock
+                    if wc_line > len(wc_lines):
+                        wc_line = wc_line % len(wc_lines)
+                    wc_lock = 0
+                else:
+                    if wc_rand >= 1:
+                        wc_line = wc_rand
+                        if wc_line > len(wc_lines):
+                            wc_line = wc_line % len(wc_lines)
+                    if 0 < wc_rand < 1:
+                        wc_line = (len(wc_lines) * wc_rand).__ceil__()
+                wc_prl = "Line " + str(wc_line) + " from " + str(wc_file) + ".txt (seed:" + str(wc_cseed) + ")"
+                if len(wc_prl)<20:
+                    tabs = "\t\t\t\t\t"
+                elif len(wc_prl)<28:
+                    tabs = "\t\t\t\t"
+                elif len(wc_prl)<36:
+                    tabs = "\t\t\t"
+                elif len(wc_prl)<44:
+                    tabs = "\t\t"
+                else:
+                    tabs = "\t"
+                if wc_ptype == 1:
+                    print(bcolors.OK, end='')
+                if wc_ptype == 2:
+                    print(bcolors.RED, end='')
+                if wc_ptype == 3:
+                    print(bcolors.CYAN, end='')
+                if wc_ptype == 4:
+                    print(bcolors.PURPLE, end='')
+                print(f"[{wc_mode}] " + bcolors.RESET + bcolors.YELLOW + wc_prl + tabs + "►" + f"{wc_lines[wc_line-1][:100]}" + bcolors.RESET)
+            return wc_lines[wc_line-1]
+
+    def process(self, p, wca_enabled, wca_seed, wca_outsep, wca_insep):
+        o_prompt = p.all_prompts[0]
+        o_negprompt = p.all_negative_prompts[0]
+        wc_iter = 1
         if getattr(p, 'all_hr_prompts', None) is not None:
-            original_hr_prompt = p.all_hr_prompts[0]
+            inc_hrpos = True
+            o_hrprompt = p.all_hr_prompts[0]
+        else:
+            inc_hrpos = False
         if getattr(p, 'all_hr_negative_prompts', None) is not None:
-            original_hr_negative_prompt = p.all_hr_negative_prompts[0]
-        global original_seed
+            inc_hrneg = True
+            o_hrnegprompt = p.all_hr_negative_prompts[0]
+        else:
+            inc_hrneg = False
+        global o_seed
         try:
-            original_seed
+            o_seed
         except NameError:
-            original_seed = p.all_seeds[0]
-        global original_batchsize
-        try:
-            original_batchsize
-        except NameError:
-            original_batchsize = p.n_iter * p.batch_size
-        global current_seed
-        try:
-            current_seed
-        except NameError:
-            current_seed = p.all_seeds[0]
-        wildcards_dir = shared.cmd_opts.wildcards_dir or os.path.join(repo_dir, "wildcards")
-        linearray = []
-        text = []
-        useprompts = []
-        embeddedwc_string = []
-        if len(p.all_seeds) > 1 and ( "__" in str(p.all_prompts) or "__" in str(p.all_negative_prompts) ):
-            original_batchsize = p.n_iter * p.batch_size
-            original_seed = p.all_seeds[0]
-            print (bcolors.YELLOW + f"[*] Batchsize {original_batchsize}" + bcolors.RESET)
-            print (bcolors.YELLOW + f"[*] Starting Seed: {original_seed}" + bcolors.RESET)
-        if "__" in str(p.all_prompts) or "__" in str(p.all_negative_prompts):
+            o_seed = p.all_seeds[0]
+        if len(p.all_seeds) > 1 and ( wca_outsep in str(p.all_prompts) or wca_outsep in str(p.all_negative_prompts) or (inc_hrpos == True and wca_outsep in str(p.all_hr_prompts)) or (inc_hrneg == True and wca_outsep in str(p.all_hr_negative_prompts))):
+            o_seed = p.all_seeds[0]
+            batchsize = p.n_iter * p.batch_size
+            print (bcolors.YELLOW + f"[*] Batchsize {batchsize}" + bcolors.RESET)
+            print (bcolors.YELLOW + f"[*] Starting Seed: {o_seed}" + bcolors.RESET)
+        if wca_outsep in str(p.all_prompts) or wca_outsep in str(p.all_negative_prompts) or (inc_hrpos == True and wca_outsep in str(p.all_hr_prompts)) or (inc_hrneg == True and wca_outsep in str(p.all_hr_negative_prompts)):
             print(bcolors.OK + "[*] " + bcolors.RESET + bcolors.YELLOW + "Positive Prompt " + bcolors.RESET + bcolors.RED + "[*] " + bcolors.RESET + bcolors.YELLOW + "Negative Prompt " + bcolors.RESET + bcolors.CYAN + "[*] " + bcolors.RESET + bcolors.YELLOW + "HR Positive Prompt " + bcolors.RESET + bcolors.PURPLE + "[*] " + bcolors.RESET + bcolors.YELLOW + "HR Negative Prompt " + bcolors.RESET)
-        if len(p.all_seeds) == 1 and original_seed != p.all_seeds[0]:
-            lastseed = original_seed + original_batchsize - 1
-            if not original_seed < p.all_seeds[0] <= lastseed:
-               original_seed = p.all_seeds[0]
-               del original_batchsize
-        for k in range(4):
-            if k == 0:
-                useprompts = p.all_prompts
-                prompt_type = 1
-            if k == 1:
-                useprompts = p.all_negative_prompts
-                prompt_type = 2
-            if k == 2:
-                if getattr(p, 'all_hr_prompts', None) is not None:
-                    useprompts = p.all_hr_prompts
-                    prompt_type = 3
+        if len(p.all_seeds) == 1 and o_seed != p.all_seeds[0]:
+            wc_iter = abs(p.all_seeds[0] - o_seed) + 1
+            if not o_seed <= p.all_seeds[0] <= (o_seed + wc_iter):
+               o_seed = p.all_seeds[0]
+               wc_iter = 1
+        for wc_ptype in range(1,5):
+            if wc_ptype == 1:
+                wc_prompts = p.all_prompts
+            if wc_ptype == 2:
+                wc_prompts = p.all_negative_prompts
+            if wc_ptype == 3:
+                if inc_hrpos:
+                    wc_prompts = p.all_hr_prompts
                 else:
-                    continue
-            if k == 3:
-                if getattr(p, 'all_hr_negative_prompts', None) is not None:
-                    useprompts = p.all_hr_negative_prompts
-                    prompt_type = 4
+                    wc_prompts = ""
+            if wc_ptype == 4:
+                if inc_hrneg:
+                    wc_prompts = p.all_hr_negative_prompts
                 else:
+                    wc_prompts = ""
                     break
-            for j, text in enumerate(useprompts):
-                current_seed = p.all_seeds[j]
-                random.seed(wca_lock_seed if wca_enable == True and wca_lock_seed > 0 else p.all_seeds[j])
-                rand_list_tiers = []
-                rand_list = []
+            for j, wc_prompt in enumerate(wc_prompts):
+                random.seed(wca_seed if wca_enabled == True else p.all_seeds[j])
+                wc_rl = []
                 for i in range(100):
-                    rand_list_tiers.append(random.random())
-                    rand_list.append(random.random())
-                fixedline = 1
-                if wca_enable == True and wca_iterative_unlock == True or wca_enable == False:
-                    if len(p.all_seeds) > 1 and p.all_seeds[j] > original_seed:
-                        fixedline = p.all_seeds[j] - original_seed + 1
-                    if p.all_seeds[0] > original_seed:
-                        fixedline = p.all_seeds[0] - original_seed + 1
-                if wca_enable == True and wca_iterative_unlock == False:
-                    fixedline = wca_linelock
-                text = " " + text + " "
-                text = text.split("__")
-                lockedline = 0
+                    wc_rl.append(random.random())
+                if len(p.all_seeds) > 1 and o_seed <= p.all_seeds[j] <= (p.all_seeds[j] + len(p.all_seeds)):
+                    wc_iter = p.all_seeds[j] - o_seed + 1
+                wc_pl = wc_prompt.split(wca_outsep)
                 i = 0
-                n = 0
-                e = len(text)
+                e = len(wc_pl)
                 while i < e:
-                    line = str(text[i])
-                    if " " not in line and len(line) > 0:
-                        linearray = line.split("_")
-                        if len(linearray) == 1:
-                            if not os.path.exists(os.path.join(wildcards_dir, f"{linearray[0]}.txt")):
-                                noline = str(linearray[0])
-                                print (bcolors.RED + "[*] Wildcard txt file not found: " + noline + ".txt" + bcolors.RESET)
-                            else:                 
-                                replacement_file = os.path.join(wildcards_dir, f"{linearray[0]}.txt")
-                                if os.path.exists(replacement_file):
-                                    if n > 99:
-                                        n = n % 99
-                                    text[i] = self.replace_wildcard(linearray[0], rand_list[n], replacement_file, lockedline, current_seed, prompt_type)
-                                    n = n + 1
-                        if len(linearray) == 2:
-                            if os.path.exists(os.path.join(wildcards_dir, f"{linearray[0]}.txt")):
-                                replacement_file = os.path.join(wildcards_dir, f"{linearray[0]}.txt")
-                                lockedline = int(linearray[1])
-                                if n > 99:
-                                        n = n % 99
-                                text[i] = self.replace_wildcard(linearray[0], rand_list[n], replacement_file, lockedline, current_seed, prompt_type)
-                                lockedline = 0
-                                n = n + 1
-                            elif os.path.exists(os.path.join(wildcards_dir, f"{linearray[1]}.txt")):
-                                replacement_file = os.path.join(wildcards_dir, f"{linearray[1]}.txt")
-                                if linearray[0] == "$":
-                                    text[i] = self.replace_wildcard(linearray[1], fixedline, replacement_file, lockedline, current_seed, prompt_type)
-                                else:
-                                    text[i] = self.replace_wildcard(linearray[1], rand_list_tiers[int(linearray[0])], replacement_file, lockedline, current_seed, prompt_type)
-                            else:
-                                noline = str(linearray[0])
-                                noline2 = str(linearray[1])
-                                if noline2.isdigit():
-                                    print (bcolors.RED + "[*] Wildcard txt file not found: " + noline + ".txt" + bcolors.RESET)
-                                else:
-                                    print (bcolors.RED + "[*] Wildcard txt file not found: " + noline2 + ".txt" + bcolors.RESET)
-                        if len(linearray) == 3:
-                            if os.path.exists(os.path.join(wildcards_dir, f"{linearray[1]}.txt")):
-                                replacement_file = os.path.join(wildcards_dir, f"{linearray[1]}.txt")
-                                lockedline = int(linearray[2])
-                                if linearray[0] == "$":
-                                    text[i] = self.replace_wildcard(linearray[1], fixedline, replacement_file, lockedline, current_seed, prompt_type)
-                                else:
-                                    text[i] = self.replace_wildcard(linearray[1], rand_list_tiers[int(linearray[0])], replacement_file, lockedline, current_seed, prompt_type)
-                                lockedline = 0
-                            else:
-                                noline = str(linearray[1])
-                                print (bcolors.RED + "[*] Wildcard txt file not found: " + noline + ".txt" + bcolors.RESET)
-                        embeddedwc_count = str(text[i]).count('__')
-                        if embeddedwc_count >= 2:
-                            text[i] = " " + str(text[i]) + " "
-                            embeddedwc_string = text[i].split("__")
-                            text[i] = " "
-                            e = e + len(embeddedwc_string)
-                            index = i+1
-                            for item in embeddedwc_string:
-                                text.insert(index, item)
-                                index += 1
-                            embeddedwc_count = 0
-                        if k == 0:
+                    wc_sl = wc_pl[i]
+                    if " " not in wc_sl and len(wc_sl) > 0 and i % 2 == 1:
+                        wc_split = wc_sl.split(wca_insep)
+                        if wca_insep not in wc_sl:
+                            if self.filecheck(wc_sl) == True:
+                                wc_mode = "N"
+                                wc_pos = 0
+                        if wca_insep in wc_sl:
+                            if 2 <= len(wc_split) <= 3:
+                                if wc_split[0].isdigit():
+                                    if self.filecheck(wc_split[1]) == True:
+                                        if int(wc_split[0]) in range (0,99):
+                                            wc_mode = "T"
+                                            wc_pos = 1
+                                        else:
+                                            self.wc_error(wc_sl, 2, wca_outsep)
+                                    else:
+                                        self.wc_error(wc_split[1], 1, wca_outsep)
+                                if wc_split[0] == "$":
+                                    if self.filecheck(wc_split[1]) == True:
+                                        wc_mode = "I"
+                                        wc_pos = 1
+                                    else:
+                                        self.wc_error(wc_split[1], 1, wca_outsep)
+                                if wc_split[-1].isdigit():
+                                    if self.filecheck(wc_split[-2]) == True:
+                                        if int(wc_split[-1]) > 0:
+                                            wc_mode = "L"
+                                        else:
+                                            wc_mode = ""
+                                            self.wc_error(wc_sl, 2, wca_outsep)
+                                    else:
+                                        self.wc_error(wc_split[-2], 1, wca_outsep)
+                        if wc_mode == "N":
+                            wc_pl[i] = self.replace_wildcard(wc_split[0], wc_rl[random.randint(0,99)], 0, p.all_seeds[j], wc_ptype, wc_mode)
+                        if wc_mode == "I":
+                            wc_pl[i] = self.replace_wildcard(wc_split[1], wc_iter, 0, p.all_seeds[j], wc_ptype, wc_mode)
+                        if wc_mode == "T":
+                            wc_pl[i] = self.replace_wildcard(wc_split[1], wc_rl[int(wc_split[0])], 0, p.all_seeds[j], wc_ptype, wc_mode)
+                        if wc_mode == "L":
+                            wc_lock = wc_split[-1]
+                            wc_pl[i] = self.replace_wildcard(wc_split[-2], 0, int(wc_lock), p.all_seeds[j], wc_ptype, wc_mode)
+                        if wca_outsep in wc_pl[i]:
+                            wc_nest = wc_pl[i].split(wca_outsep)
+                            e += (len(wc_nest) - 1)
+                            wc_pl[i:i+1] = [""]
+                            wc_pl[i+1:i+2] = wc_nest
+                        if wc_ptype == 1:
                             if p.n_iter > 1 or p.batch_size > 1:
-                                p.all_prompts[j] = ''.join(text)
+                                p.all_prompts[j] = ''.join(wc_pl)
                             else:
-                                p.all_prompts[0] = ''.join(text)
-                        if k == 1:
+                                p.all_prompts[0] = ''.join(wc_pl)
+                        if wc_ptype == 2:
                             if p.n_iter > 1 or p.batch_size > 1:
-                                p.all_negative_prompts[j] = ''.join(text)
+                                p.all_negative_prompts[j] = ''.join(wc_pl)
                             else:
-                                p.all_negative_prompts[0] = ''.join(text)
-                        if k == 2:
+                                p.all_negative_prompts[0] = ''.join(wc_pl)
+                        if wc_ptype == 3:
                             if p.n_iter > 1 or p.batch_size > 1:
-                                p.all_hr_prompts[j] = ''.join(text)
+                                p.all_hr_prompts[j] = ''.join(wc_pl)
                             else:
-                                p.all_hr_prompts[0] = ''.join(text)
-                        if k == 3:
+                                p.all_hr_prompts[0] = ''.join(wc_pl)
+                        if wc_ptype == 4:
                             if p.n_iter > 1 or p.batch_size > 1:
-                                p.all_hr_negative_prompts[j] = ''.join(text)
+                                p.all_hr_negative_prompts[j] = ''.join(wc_pl)
                             else:
-                                p.all_hr_negative_prompts[0] = ''.join(text)
-                    i = i + 1
-        if original_prompt != p.all_prompts[0]:
-            p.extra_generation_params["Wildcard prompt"] = original_prompt
-        if original_negative_prompt != p.all_negative_prompts[0]:
-            p.extra_generation_params["Wildcard neg prompt"] = original_negative_prompt
-        if getattr(p, 'all_hr_prompts', None) is not None:
-            if original_hr_prompt != p.all_hr_prompts[0]:
-                p.extra_generation_params["Wildcard HR prompt"] = original_hr_prompt
-        if getattr(p, 'all_hr_negative_prompts', None) is not None:
-            if original_hr_negative_prompt != p.all_hr_negative_prompts[0]:
-                p.extra_generation_params["Wildcard HR neg prompt"] = original_hr_negative_prompt
+                                p.all_hr_negative_prompts[0] = ''.join(wc_pl)
+                    i += 1
+            if o_prompt != p.all_prompts[0]:
+                p.extra_generation_params["Wildcard prompt"] = o_prompt
+            if o_negprompt != p.all_negative_prompts[0]:
+                p.extra_generation_params["Wildcard neg prompt"] = o_negprompt
+            if inc_hrpos:
+                if o_hrprompt != p.all_hr_prompts[0]:
+                    p.extra_generation_params["Wildcard HR prompt"] = o_hrprompt
+            if inc_hrneg:
+                if o_hrnegprompt != p.all_hr_negative_prompts[0]:
+                    p.extra_generation_params["Wildcard HR neg prompt"] = o_hrnegprompt
