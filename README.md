@@ -1,70 +1,27 @@
-#### Wildcards Adetailer fix
+## Wildcards with Adetailer Support
 
-A personal fork I made to make wildcards extension work better with Adetailer.
+#### Supports:
+* ***All Prompts***: Positive \ Negative \ HR Postive \ HR Negative \ Adetailer Positive \ Adetailer Negative
+* ***Nested Wildcards*** inside of wildcard text files. (ie. hair.txt line 1: `__20_hairstyle__ __21_haircolor__ hair` makes for a cleaner looking prompt where you only need one wildcard. `__0_hair__`)
+  (Be careful when nesting a wildcard inside of itself.)
 
-# Final final update (probably)
+#### Features
+* ***Tiered Wildcards*** that share the same random generation based on the seed. (ie. `__0_wildcard__` up to `__99_wildcard__`)
+* ***Iterative wildcards*** that go through wildcard text files line by line in a batch. (ie. `__$_wildcard__`)
+* ***Locking wildcards*** to specific lines. (ie. `__0_wildcard_9__`/`__$_wildcard_9__`/`__wildcard_9__` in which in all cases the ninth line fromt he wildcard will be chosen.)
+* Depreciated vanilla use. (ie. `__wildcard__` completely random, remaking the same seed will never be the same, haha.)
+#### Menu
+* Locking random seed generation to a specific seed.
+* Changing inner and outer separators.
 
-Added nesting support. Can now call on wildcards inside wildcards.
+#### Tiered Wildcards: `__0_wildcard__` up to `__99_wildcard__`
+* The number represents a linked random seed generation. So `__0_wildcard__` will output the same result in any prompt. As long as the wildcards have the same number of lines, can link different wildcards with each other. (ie. `__5_one__` and `__5_two__` where one.txt and two.txt both have 50 lines of text will always pick the same line result.
 
-example:
-prompt before wildcards:
-`__0_wildcard__`
+#### Incompatibility:
+- Do not use `_`character in wildcard txt file names. (or whichever INNER separator you input in the menu, the inner separator will conflict with any instances of it in wildcard text file names.)
+- Do not use `__` anywhere else in the prompt. (or whichever OUTER separator you input in the menu, the outer separator will conflict with any instances of it in the prompt text.)
+- Does not work properly with Batch Size. Use Batch Count instead when making batches.
 
-test.txt
-line 1: `HELLO WORLD`
-
-wildcard.txt
-line 1: `This is a prompt with a wildcard __0_test__ you can infinitely nest wildcards inside wildcards inside wildcards (in theory)`
-
-prompt after wildcards:
-`This is a prompt with a wildcard HELLO WORLD you can infinitely nest wildcards inside wildcards inside wildcards (in theory)`
-
-
-
-    Be careful of infinite loops when calling a wildcard from inside itself.
-    wildcard.txt
-    line 1: `__wildcard_1__`
-    prompt:
-    `__wildcard_1__`
-    This is NOT a good time.
-
-
-
-# Final update (probably)
-
-Added negative and hires prompt support
-
-
-# Update
-
-locking a wildcard: `__0_wildcard_12__` will lock to the 12th line of the wildcard.txt file.
-
-Cleaned up code a bit as it was a bit of a mess.
-
-# Upate:
-
--Added the functionality back to use normal wildcards `__wildcard__` next to tiered wild cards `__0_wildcard__` upto `__19_wildcard__`.
-
--Added functionality for iterative wildcards that go through text files line by line. `__$_wildcard__`
-
--Fixed a bunch of bugs and made it work a lot better, also added settings to txt2img UI instead of inside settings menu for seed locking.
-
-## Changes from main extension:
-
-1. Now, order does not matter and you can add any wildcard to adetailer prompt without it generating a different item. 
-
-2. Also, I have made it so there can be tiers. So you can link certain wildcard txt files to each other so all of them will grab the same line number in the TXT.
-    The proper use for this fork is by using `__0_name__` up to `__9_name__` to pull from **name.txt** in the wildcards directory. (the leading number **should not** be on the txt filename.)
-    Every wildcard using the same leading number will use the same random generation (and if the txt files have an equal amount of lines, will pick the same line number.
-
-This is great when you want to add a lengthy bit of prompt into the main prompt but only want a small part of the same prompt in adetailer prompt (Or you want to seperate lora's. Now you can just seperate them into two txt files and use the same leading number like `__0_partone__ __0_parttwo__` in your main prompt and only `__0_partone__` in adetailer. If both partone.txt and parttwo.txt have the same number of lines, they will both get the same linenumber.
-
-3. For the best randomization, unless you need to use the same tier, it is best to use as many tiers as possible. So `__0_name__ __1_name__ __2_name__` etc. Right now the maximum amount of tiers is 20 (0 to 19), I think that is a nice amount.
-    
-
-Just like the main extension, make sure you use spaces at the beginning and end of newlines.
-
-
-## Install
+#### Install
 To install from webui, go to `Extensions -> Install from URL`, paste `https://github.com/uorufu/stable-diffusion-webui-wildcards-adetailer`
 into URL field, and press Install.
