@@ -27,12 +27,12 @@ class WildcardsScript(scripts.Script):
         with gr.Row(elem_id=elem+"wildcard_adetailer_row"):
             with gr.Accordion("Wildcards for Adetailer", open=False, elem_id=elem+"wildcard_adetailer_accordion"):
                 with gr.Row():
-                    wca_enabled = gr.Checkbox(scale=1, label="Enable Lock", value=False, elem_id=elem+"enabled", interactive=True)
-                    wca_seed = gr.Number(scale=9, precision=0, label="Seed:", value=0, interactive=True, elem_id=elem+"seed")
+                    wca_enabled = gr.Checkbox(scale=1, label="Enable Lock", value=False, interactive=True, elem_id=elem+"enabled")
+                    wca_seed = gr.Number(scale=9, precision=0, label="Seed:", interactive=False, elem_id=elem+"seed")
                 with gr.Row():
-                    wca_outsep = gr.Textbox(label="Outer Separator:", value="__", interactive=True, elem_id=elem+"outsep")
-                    wca_insep = gr.Textbox(label="Inner Separator:", value="_", interactive=True, elem_id=elem+"insep")
-                with gr.Accordion('More info about Wildcards for Adetailer',open=False,elem_id=elem+'help'):
+                    wca_osep = gr.Textbox(label="Outer Separator:", value="__", interactive=True, elem_id=elem+"osep")
+                    wca_isep = gr.Textbox(label="Inner Separator:", value="_", interactive=True, elem_id=elem+"isep")
+                with gr.Accordion('More info about Wildcards for Adetailer', open=False, elem_id=elem+'help'):
                     gr.Markdown('''
 #Wildcards for Adetailer:
 
@@ -84,7 +84,8 @@ If you want to change the directory of your wildcards from the wildcards folder 
 
 - --wildcards-dir "c:\path\to\wildcards"
                     ''')
-        return [wca_enabled, wca_seed, wca_outsep, wca_insep]
+        wca_enabled.change(fn=lambda value:gr.update(interactive=value),inputs=wca_enabled,outputs=wca_seed)
+        return [wca_enabled, wca_seed, wca_osep, wca_isep]
 
     def filecheck(self, file):
         if not os.path.exists(os.path.join(wc_dir, f"{file}.txt")):
@@ -92,12 +93,12 @@ If you want to change the directory of your wildcards from the wildcards folder 
         else:
             return True
 
-    def wc_error(self, wc_sl, wc_errortype, wca_outsep):
+    def wc_error(self, wc_sl, wc_errortype, wca_osep):
         if wc_errortype == 1:
             print (bcolors.RED + "[*] Wildcard missing: " + repr(wc_sl)[1:-1] + ".txt is not found." + bcolors.RESET)
         if wc_errortype == 2:
-            print (bcolors.RED + "[*] Illegal wildcard found: " + wca_outsep + repr(wc_sl)[1:-1] + wca_outsep + " is not valid." + bcolors.RESET)
-        return
+            print (bcolors.RED + "[*] Illegal wildcard found: " + wca_osep + repr(wc_sl)[1:-1] + wca_osep + " is not valid." + bcolors.RESET)
+        return "e"
 
     def replace_wildcard(self, wc_file, wc_rand, wc_lock, wc_cseed, wc_ptype, wc_mode):
             wc_path = os.path.join(wc_dir, f"{wc_file}.txt")
@@ -137,7 +138,7 @@ If you want to change the directory of your wildcards from the wildcards folder 
                 print(f"[{wc_mode}] " + bcolors.RESET + bcolors.YELLOW + wc_prl + tabs + "►" + f"{wc_lines[wc_line-1][:100]}" + bcolors.RESET)
             return wc_lines[wc_line-1]
 
-    def process(self, p, wca_enabled, wca_seed, wca_outsep, wca_insep):
+    def process(self, p, wca_enabled, wca_seed, wca_osep, wca_isep):
         o_prompt = p.all_prompts[0]
         o_negprompt = p.all_negative_prompts[0]
         wc_iter = 1
@@ -156,12 +157,12 @@ If you want to change the directory of your wildcards from the wildcards folder 
             o_seed
         except NameError:
             o_seed = p.all_seeds[0]
-        if len(p.all_seeds) > 1 and ( wca_outsep in str(p.all_prompts) or wca_outsep in str(p.all_negative_prompts) or (inc_hrpos == True and wca_outsep in str(p.all_hr_prompts)) or (inc_hrneg == True and wca_outsep in str(p.all_hr_negative_prompts))):
+        if len(p.all_seeds) > 1 and ( wca_osep in str(p.all_prompts) or wca_osep in str(p.all_negative_prompts) or (inc_hrpos == True and wca_osep in str(p.all_hr_prompts)) or (inc_hrneg == True and wca_osep in str(p.all_hr_negative_prompts))):
             o_seed = p.all_seeds[0]
             batchsize = p.n_iter * p.batch_size
             print (bcolors.YELLOW + f"[*] Batchsize {batchsize}" + bcolors.RESET)
             print (bcolors.YELLOW + f"[*] Starting Seed: {o_seed}" + bcolors.RESET)
-        if wca_outsep in str(p.all_prompts) or wca_outsep in str(p.all_negative_prompts) or (inc_hrpos == True and wca_outsep in str(p.all_hr_prompts)) or (inc_hrneg == True and wca_outsep in str(p.all_hr_negative_prompts)):
+        if wca_osep in str(p.all_prompts) or wca_osep in str(p.all_negative_prompts) or (inc_hrpos == True and wca_osep in str(p.all_hr_prompts)) or (inc_hrneg == True and wca_osep in str(p.all_hr_negative_prompts)):
             print(bcolors.OK + "[*] " + bcolors.RESET + bcolors.YELLOW + "Positive Prompt " + bcolors.RESET + bcolors.RED + "[*] " + bcolors.RESET + bcolors.YELLOW + "Negative Prompt " + bcolors.RESET + bcolors.CYAN + "[*] " + bcolors.RESET + bcolors.YELLOW + "HR Positive Prompt " + bcolors.RESET + bcolors.PURPLE + "[*] " + bcolors.RESET + bcolors.YELLOW + "HR Negative Prompt " + bcolors.RESET)
         if len(p.all_seeds) == 1 and o_seed != p.all_seeds[0]:
             wc_iter = abs(p.all_seeds[0] - o_seed) + 1
@@ -191,43 +192,45 @@ If you want to change the directory of your wildcards from the wildcards folder 
                     wc_rl.append(random.random())
                 if len(p.all_seeds) > 1 and o_seed <= p.all_seeds[j] <= (p.all_seeds[j] + len(p.all_seeds)):
                     wc_iter = p.all_seeds[j] - o_seed + 1
-                wc_pl = wc_prompt.split(wca_outsep)
+                wc_pl = wc_prompt.split(wca_osep)
                 i = 0
                 e = len(wc_pl)
                 while i < e:
                     wc_sl = wc_pl[i]
                     if " " not in wc_sl and len(wc_sl) > 0 and i % 2 == 1:
-                        wc_split = wc_sl.split(wca_insep)
-                        if wca_insep not in wc_sl:
+                        wc_split = wc_sl.split(wca_isep)
+                        if wca_isep not in wc_sl:
                             if self.filecheck(wc_sl) == True:
                                 wc_mode = "N"
                                 wc_pos = 0
-                        if wca_insep in wc_sl:
-                            if 2 <= len(wc_split) <= 3:
+                            else:
+                                wc_mode = self.wc_error(wc_split[1], 1, wca_osep)
+                        if wca_isep in wc_sl:
+                            if len(wc_split) == 2:
                                 if wc_split[0].isdigit():
                                     if self.filecheck(wc_split[1]) == True:
                                         if int(wc_split[0]) in range (0,99):
                                             wc_mode = "T"
                                             wc_pos = 1
-                                        else:
-                                            self.wc_error(wc_sl, 2, wca_outsep)
                                     else:
-                                        self.wc_error(wc_split[1], 1, wca_outsep)
+                                        wc_mode = self.wc_error(wc_split[1], 1, wca_osep)
                                 if wc_split[0] == "$":
                                     if self.filecheck(wc_split[1]) == True:
                                         wc_mode = "I"
                                         wc_pos = 1
                                     else:
-                                        self.wc_error(wc_split[1], 1, wca_outsep)
+                                        wc_mode = self.wc_error(wc_split[1], 1, wca_osep)
+                            if 2 <= len(wc_split) <= 3:
                                 if wc_split[-1].isdigit():
                                     if self.filecheck(wc_split[-2]) == True:
                                         if int(wc_split[-1]) > 0:
                                             wc_mode = "L"
-                                        else:
-                                            wc_mode = ""
-                                            self.wc_error(wc_sl, 2, wca_outsep)
                                     else:
-                                        self.wc_error(wc_split[-2], 1, wca_outsep)
+                                        wc_mode = self.wc_error(wc_split[-2], 1, wca_osep)
+                        try:
+                            wc_mode
+                        except NameError:
+                            wc_mode = self.wc_error(wc_sl, 2, wca_osep)
                         if wc_mode == "N":
                             wc_pl[i] = self.replace_wildcard(wc_split[0], wc_rl[random.randint(0,99)], 0, p.all_seeds[j], wc_ptype, wc_mode)
                         if wc_mode == "I":
@@ -237,8 +240,8 @@ If you want to change the directory of your wildcards from the wildcards folder 
                         if wc_mode == "L":
                             wc_lock = wc_split[-1]
                             wc_pl[i] = self.replace_wildcard(wc_split[-2], 0, int(wc_lock), p.all_seeds[j], wc_ptype, wc_mode)
-                        if wca_outsep in wc_pl[i]:
-                            wc_nest = wc_pl[i].split(wca_outsep)
+                        if wca_osep in wc_pl[i]:
+                            wc_nest = wc_pl[i].split(wca_osep)
                             e += (len(wc_nest) - 1)
                             wc_pl[i:i+1] = [""]
                             wc_pl[i+1:i+2] = wc_nest
