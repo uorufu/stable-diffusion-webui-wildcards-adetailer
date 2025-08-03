@@ -25,4 +25,4 @@
 To install from webui, go to `Extensions -> Install from URL`, paste `https://github.com/uorufu/stable-diffusion-webui-wildcards-adetailer`
 into URL field, and press Install.
 
-![Screenshot.](https://raw.githubusercontent.com/uorufu/stable-diffusion-webui-wildcards-adetailer/refs/heads/master/ss.png))
+![Screenshot.](https://raw.githubusercontent.com/uorufu/stable-diffusion-webui-wildcards-adetailer/refs/heads/master/ss.png)
