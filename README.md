@@ -2,8 +2,7 @@
 
 #### Supports:
 * ***All Prompts***: Positive \ Negative \ HR Postive \ HR Negative \ Adetailer Positive \ Adetailer Negative
-* ***Nested Wildcards*** inside of wildcard text files. (ie. hair.txt line 1: `__20_hairstyle__ __21_haircolor__ hair` makes for a cleaner looking prompt where you only need one wildcard. `__0_hair__`)
-  (Be careful when nesting a wildcard inside of itself.)
+* ***Nested Wildcards*** inside of wildcard text files. (ie. hair.txt line 1: `__20_hairstyle__ __21_haircolor__ hair` makes for a cleaner looking prompt where you only need one wildcard. `__0_hair__`. Be careful when nesting a wildcard inside of itself.)
 
 #### Features
 * ***Tiered Wildcards*** that share the same random generation based on the seed. (ie. `__0_wildcard__` up to `__99_wildcard__`)
