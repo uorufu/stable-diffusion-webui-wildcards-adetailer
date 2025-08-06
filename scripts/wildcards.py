@@ -104,7 +104,7 @@ If you want to change the directory of your wildcards from the wildcards folder 
             wc_path = os.path.join(wc_dir, f"{wc_file}.txt")
             with open(wc_path, encoding="utf8") as f:
                 wc_lines = f.read().splitlines()
-                if wc_lock > 0:
+                if wc_lock > 0 and wc_rand < 1:
                     wc_line = wc_lock
                     if wc_line > len(wc_lines):
                         wc_line = wc_line % len(wc_lines)
@@ -114,8 +114,8 @@ If you want to change the directory of your wildcards from the wildcards folder 
                         wc_line = wc_rand
                         if wc_line > len(wc_lines):
                             wc_line = wc_line % len(wc_lines)
-                    if 0 < wc_rand < 1:
-                        wc_line = (len(wc_lines) * wc_rand).__ceil__()
+                if 0 < wc_rand < 1:
+                    wc_line = (len(wc_lines) * wc_rand).__ceil__()
                 wc_prl = "Line " + str(wc_line) + " from " + str(wc_file) + ".txt (seed:" + str(wc_cseed) + ")"
                 if len(wc_prl)<20:
                     tabs = "\t\t\t\t\t"
@@ -202,7 +202,6 @@ If you want to change the directory of your wildcards from the wildcards folder 
                         if wca_isep not in wc_sl:
                             if self.filecheck(wc_sl) == True:
                                 wc_mode = "N"
-                                wc_pos = 0
                             else:
                                 wc_mode = self.wc_error(wc_split[1], 1, wca_osep)
                         if wca_isep in wc_sl:
@@ -211,19 +210,20 @@ If you want to change the directory of your wildcards from the wildcards folder 
                                     if self.filecheck(wc_split[1]) == True:
                                         if int(wc_split[0]) in range (0,99):
                                             wc_mode = "T"
-                                            wc_pos = 1
                                     else:
                                         wc_mode = self.wc_error(wc_split[1], 1, wca_osep)
                                 if wc_split[0] == "$":
                                     if self.filecheck(wc_split[1]) == True:
                                         wc_mode = "I"
-                                        wc_pos = 1
                                     else:
                                         wc_mode = self.wc_error(wc_split[1], 1, wca_osep)
                             if 2 <= len(wc_split) <= 3:
                                 if wc_split[-1].isdigit():
                                     if self.filecheck(wc_split[-2]) == True:
-                                        if int(wc_split[-1]) > 0:
+                                        if int(wc_split[-1]) > 0 and wc_split[0] == "$":
+                                            wc_mode = "I"
+                                            wc_iter = wc_iter + int(wc_split[-1]) - 1
+                                        if int(wc_split[-1]) > 0 and wc_split[0] != "$":
                                             wc_mode = "L"
                                     else:
                                         wc_mode = self.wc_error(wc_split[-2], 1, wca_osep)
@@ -238,8 +238,7 @@ If you want to change the directory of your wildcards from the wildcards folder 
                         if wc_mode == "T":
                             wc_pl[i] = self.replace_wildcard(wc_split[1], wc_rl[int(wc_split[0])], 0, p.all_seeds[j], wc_ptype, wc_mode)
                         if wc_mode == "L":
-                            wc_lock = wc_split[-1]
-                            wc_pl[i] = self.replace_wildcard(wc_split[-2], 0, int(wc_lock), p.all_seeds[j], wc_ptype, wc_mode)
+                            wc_pl[i] = self.replace_wildcard(wc_split[-2], 0, int(wc_split[-1]), p.all_seeds[j], wc_ptype, wc_mode)
                         if wca_osep in wc_pl[i]:
                             wc_nest = wc_pl[i].split(wca_osep)
                             e += (len(wc_nest) - 1)
@@ -266,6 +265,7 @@ If you want to change the directory of your wildcards from the wildcards folder 
                             else:
                                 p.all_hr_negative_prompts[0] = ''.join(wc_pl)
                     i += 1
+                wc_iter = 1
             if o_prompt != p.all_prompts[0]:
                 p.extra_generation_params["Wildcard prompt"] = o_prompt
             if o_negprompt != p.all_negative_prompts[0]:
