@@ -299,9 +299,10 @@ If you want to change the directory of your wildcards from the wildcards folder 
                             wc_pl[i] = self.replace_wildcard(wc_split[-2], 0, int(wc_split[-1]), p.all_seeds[j], wc_ptype, wc_mode)
                         if wca_osep in wc_pl[i]:
                             wc_nest = wc_pl[i].split(wca_osep)
-                            e += (len(wc_nest) - 1)
+                            wc_nest.append("")
+                            e += (len(wc_nest))
                             wc_pl[i:i+1] = [""]
-                            wc_pl[i+1:i+2] = wc_nest
+                            wc_pl[i+1:i+1] = wc_nest
                         if wc_ptype == 1:
                             if p.n_iter > 1 or p.batch_size > 1:
                                 p.all_prompts[j] = ''.join(wc_pl)
@@ -333,3 +334,4 @@ If you want to change the directory of your wildcards from the wildcards folder 
             if inc_hrneg:
                 if o_hrnegprompt != p.all_hr_negative_prompts[0]:
                     p.extra_generation_params["Wildcard HR neg prompt"] = o_hrnegprompt
+
