@@ -27,16 +27,18 @@ class WildcardsScript(scripts.Script):
         with gr.Row(elem_id=elem+"wildcard_adetailer_row"):
             with gr.Accordion("Wildcards for Adetailer", open=False, elem_id=elem+"wildcard_adetailer_accordion"):
                 with gr.Row():
-                    wca_enabled = gr.Checkbox(scale=1, label="Enable Lock", value=False, interactive=True, elem_id=elem+"enabled")
-                    wca_seed = gr.Number(scale=9, precision=0, label="Seed:", interactive=False, elem_id=elem+"seed")
+                    wca_enabled = gr.Checkbox(scale=2, label="Enable lock", value=False, elem_id=elem+"enabled")
                 with gr.Row():
-                    wca_osep = gr.Textbox(label="Outer Separator:", value="__", interactive=True, elem_id=elem+"osep")
-                    wca_isep = gr.Textbox(label="Inner Separator:", value="_", interactive=True, elem_id=elem+"isep")
-                    wca_iter = gr.Textbox(label="Iteration Symbol:", value="$", interactive=True, elem_id=elem+"iter")
+                    wca_seed = gr.Number(scale=1, label="Seed:", value="", visible=False, elem_id=elem+"seed")
+                with gr.Row():
+                    wca_tierlockmethod = gr.Radio(["Unlock", "Lock"], scale=1, label=" ", value="Unlock", visible=False, elem_id=elem+"tierlockmethod")
+                    wca_tierlock = gr.Textbox(scale=3, label=" ", value="#,#,#...", visible=False, elem_id=elem+"tierlock")
+                with gr.Row():
+                    wca_osep = gr.Textbox(label="Outer Separator:", value="__", elem_id=elem+"osep")
+                    wca_isep = gr.Textbox(label="Inner Separator:", value="_", elem_id=elem+"isep")
+                    wca_iter = gr.Textbox(label="Iteration Symbol:", value="$", elem_id=elem+"iter")
                 with gr.Accordion('More info about Wildcards for Adetailer', open=False, elem_id=elem+'help'):
                     gr.Markdown('''
-#Wildcards for Adetailer:
-
 ## Methods:
 
 - Vanilla wildcard:   (Depreciated, but still functional. Completely random even when generating the same seed multiple times)
@@ -61,7 +63,6 @@ class WildcardsScript(scripts.Script):
 - Do not use `_`character in wildcard txt file names. (or whichever INNER separator you input in the menu)
 
 
-
 ## Detailed explanation of methods:
 
 - Tiered use is a great way to split wildcards into parts or match wildcards with wildcards in adetailer. If you need to use only parts in adetailer prompt or want to seperate lora's. If you have three txt files with 20 lines each and put them all in the same tier, let's say `__4_lora__` `__4_body__` in main prompt and `__4_face__` in adetailer prompt, then every time the same line number will be chosen for each of these wildcards.
@@ -80,7 +81,9 @@ The random generation method just uses a seeding method based on the generation 
 
 ## Seed locking:
 
-The seed locking feature is for if you have a particular result and want to generate more of the same image with that result using other seeds. You can manually input the seed you want to lock (`Lock seed`) and then generate images in other seeds based on the random generation of the seed you locked. (Will not lock iterative wildcards. You can lock them manually using the 'specific line lock' feature (`__$_wildcard_2__`) 
+- The seed locking feature is for if you have a particular result and want to generate more of the same image with that result using other seeds. You can manually input the seed you want to lock and then generate images in other seeds based on the wildcard results of the seed you locked.
+
+- Lock/Unlock specified tiers only. When seed lock is enabled, you can unlock specified tiers (ie. Unlock + 1,2,3 = locks all tiers except 1 2 3) or limit the lock to specified tiers (ie. Lock + 1,2,3 = locks only tiers 1 2 and 3)
 
 ## CMD Flags:
 
@@ -88,8 +91,9 @@ If you want to change the directory of your wildcards from the wildcards folder 
 
 - --wildcards-dir "c:\path\to\wildcards"
                     ''')
-        wca_enabled.change(fn=lambda value:gr.update(interactive=value),inputs=wca_enabled,outputs=wca_seed)
-        return [wca_enabled, wca_seed, wca_osep, wca_isep, wca_iter]
+        outs = [wca_seed,wca_tierlockmethod,wca_tierlock]
+        wca_enabled.change(fn=lambda value:[gr.update(visible=value) for _ in outs],inputs=[wca_enabled],outputs=outs)
+        return [wca_enabled, wca_seed, wca_osep, wca_isep, wca_iter, wca_tierlockmethod, wca_tierlock]
 
     def filecheck(self, file):
         if not os.path.exists(os.path.join(wc_dir, f"{file}.txt")):
@@ -149,7 +153,24 @@ If you want to change the directory of your wildcards from the wildcards folder 
                 print(f"[{wc_mode}] " + bcolors.RESET + bcolors.YELLOW + wc_prl + tabs + "►" + f"{wc_lines[wc_line-1][:100]}" + bcolors.RESET)
             return wc_lines[wc_line-1]
 
-    def process(self, p, wca_enabled, wca_seed, wca_osep, wca_isep, wca_iter):
+    def process(self, p, wca_enabled, wca_seed, wca_osep, wca_isep, wca_iter, wca_tierlockmethod, wca_tierlock):
+        try:
+            p.batch_index
+        except AttributeError:
+            try:
+                p._ad_inner
+            except AttributeError:
+                self.wc_delglobals()
+        global o_seed
+        global o_bsize
+        try:
+            o_seed
+        except NameError:
+            o_seed = p.all_seeds[0]
+        try:
+            o_bsize
+        except NameError:
+            o_bsize = 1
         o_prompt = p.all_prompts[0]
         o_negprompt = p.all_negative_prompts[0]
         if getattr(p, 'all_hr_prompts', None) is not None:
@@ -162,35 +183,6 @@ If you want to change the directory of your wildcards from the wildcards folder 
             o_hrnegprompt = p.all_hr_negative_prompts[0]
         else:
             inc_hrneg = False
-        global o_seed
-        global o_bsize
-        
-        try:
-            p.batch_index
-        except AttributeError:
-            try:
-                p._ad_disabled
-            except AttributeError: # This happens right before all generations (single or batch) with Adetailer turned on
-                self.wc_delglobals()
-                p.wc_batch_type = 2
-            else:
-                try:
-                    o_seed
-                except NameError: # This happens right before all generations (single or batch) with Adetailer turned off
-                    self.wc_delglobals()
-                    p.wc_batch_type = 1
-                if not len(p.extra_generation_params) > 0: # Failsafe on batch interrupts /w AD on. Might conflict /w extensions using p.extra_generation_params
-                    self.wc_delglobals()
-                    p.wc_batch_type = 1
-                    
-        try:
-            o_seed
-        except NameError:
-            o_seed = p.all_seeds[0]
-        try:
-            o_bsize
-        except NameError:
-            o_bsize = 1
         if len(p.all_seeds) > 1 and (wca_osep in str(p.all_prompts) or wca_osep in str(p.all_negative_prompts) or (inc_hrpos == True and wca_osep in str(p.all_hr_prompts)) or (inc_hrneg == True and wca_osep in str(p.all_hr_negative_prompts))):
             o_seed = p.all_seeds[0]
             o_bsize = p.n_iter * p.batch_size
@@ -198,7 +190,6 @@ If you want to change the directory of your wildcards from the wildcards folder 
             print (bcolors.YELLOW + f"[*] Starting Seed: {p.all_seeds[0]}" + bcolors.RESET)
         if wca_osep in str(p.all_prompts) or wca_osep in str(p.all_negative_prompts) or (inc_hrpos == True and wca_osep in str(p.all_hr_prompts)) or (inc_hrneg == True and wca_osep in str(p.all_hr_negative_prompts)):
             print(bcolors.OK + "[N] Normal [T] Tiered [I] Iterative [L] Locked\n[*] " + bcolors.RESET + bcolors.YELLOW + "Positive Prompt " + bcolors.RESET + bcolors.RED + "[*] " + bcolors.RESET + bcolors.YELLOW + "Negative Prompt " + bcolors.RESET + bcolors.CYAN + "[*] " + bcolors.RESET + bcolors.YELLOW + "HR Positive Prompt " + bcolors.RESET + bcolors.PURPLE + "[*] " + bcolors.RESET + bcolors.YELLOW + "HR Negative Prompt" + bcolors.RESET)
-        wc_iter = 1
         for wc_ptype in range(1,6):
             if wc_ptype == 1:
                 wc_prompts = p.all_prompts
@@ -215,41 +206,20 @@ If you want to change the directory of your wildcards from the wildcards folder 
                 else:
                     wc_prompts = ""
             if wc_ptype == 5:
-                try:
-                    p.batch_index
-                except AttributeError:
-                    try:
-                        p._ad_disabled
-                    except AttributeError:
-                        pass
-                    else: 
-                        try:
-                            p.wc_batch_type
-                        except AttributeError:
-                            pass
-                        else:
-                            if p.wc_batch_type == 1: # This happens right after all generations (single or batch) with Adetailer turned off
-                                self.wc_delglobals()
-                                break
-                else:
-                    try:
-                        p.wc_batch_type
-                    except AttributeError:
-                        pass
-                    else:
-                        if o_bsize == (p.iteration + 1) and p.wc_batch_type == 2: # This happens right after all generations (single or batch) with Adetailer turned on
-                            self.wc_delglobals()
-                            break
-
+                break
             for j, wc_prompt in enumerate(wc_prompts):
-                random.seed(wca_seed if wca_enabled == True else p.all_seeds[j])
                 wc_rl = []
+                wc_rll = []
+                random.seed(p.all_seeds[j])
                 for i in range(100):
                     wc_rl.append(random.random())
-                if o_seed <= p.all_seeds[j] <= (o_seed + o_bsize - 1):
+                if wca_enabled == True:
+                    random.seed(wca_seed)
+                    for i in range(100):
+                        wc_rll.append(random.random())
+                wc_iter = 1
+                if o_seed < p.all_seeds[j] <= (o_seed + o_bsize - 1):
                     wc_iter = abs(p.all_seeds[j] - o_seed + 1)
-                if o_seed < p.all_seeds[0] <= (o_seed + o_bsize - 1):
-                    wc_iter = abs(p.all_seeds[0] - o_seed + 1)
                 wc_pl = wc_prompt.split(wca_osep)
                 i = 0
                 e = len(wc_pl)
@@ -261,6 +231,7 @@ If you want to change the directory of your wildcards from the wildcards folder 
                             if self.filecheck(wc_sl) == True:
                                 wc_mode = "N"
                             else:
+                                print(wc_split)
                                 wc_mode = self.wc_error(wc_split[1], 1, wca_osep)
                         if wca_isep in wc_sl:
                             if len(wc_split) == 2:
@@ -269,11 +240,13 @@ If you want to change the directory of your wildcards from the wildcards folder 
                                         if int(wc_split[0]) in range (0,99):
                                             wc_mode = "T"
                                     else:
+                                        print(wc_split)
                                         wc_mode = self.wc_error(wc_split[1], 1, wca_osep)
                                 if wc_split[0] == wca_iter:
                                     if self.filecheck(wc_split[1]) == True:
                                         wc_mode = "I"
                                     else:
+                                        print(wc_split)
                                         wc_mode = self.wc_error(wc_split[1], 1, wca_osep)
                             if 2 <= len(wc_split) <= 3:
                                 if wc_split[-1].isdigit():
@@ -289,12 +262,19 @@ If you want to change the directory of your wildcards from the wildcards folder 
                             wc_mode
                         except NameError:
                             wc_mode = self.wc_error(wc_sl, 2, wca_osep)
+                        wcatierlockarr = wca_tierlock.split(sep=",")
                         if wc_mode == "N":
-                            wc_pl[i] = self.replace_wildcard(wc_split[0], wc_rl[random.randint(0,99)], 0, p.all_seeds[j], wc_ptype, wc_mode)
+                            if (wca_enabled == True and wca_tierlockmethod == "Lock" and wc_split[0] in wcatierlockarr) or (wca_enabled == True and wca_tierlockmethod == "Unlock" and wc_split[0] not in wcatierlockarr):
+                                wc_pl[i] = self.replace_wildcard(wc_split[0], wc_rll[random.randint(0,99)], 0, p.all_seeds[j], wc_ptype, wc_mode)
+                            else:
+                                wc_pl[i] = self.replace_wildcard(wc_split[0], wc_rl[random.randint(0,99)], 0, p.all_seeds[j], wc_ptype, wc_mode)
                         if wc_mode == "I":
                             wc_pl[i] = self.replace_wildcard(wc_split[1], wc_iter, 0, p.all_seeds[j], wc_ptype, wc_mode)
                         if wc_mode == "T":
-                            wc_pl[i] = self.replace_wildcard(wc_split[1], wc_rl[int(wc_split[0])], 0, p.all_seeds[j], wc_ptype, wc_mode)
+                            if (wca_enabled == True and wca_tierlockmethod == "Lock" and wc_split[0] in wcatierlockarr) or (wca_enabled == True and wca_tierlockmethod == "Unlock" and wc_split[0] not in wcatierlockarr):
+                                wc_pl[i] = self.replace_wildcard(wc_split[1], wc_rll[int(wc_split[0])], 0, p.all_seeds[j], wc_ptype, wc_mode)
+                            else:
+                                wc_pl[i] = self.replace_wildcard(wc_split[1], wc_rl[int(wc_split[0])], 0, p.all_seeds[j], wc_ptype, wc_mode)
                         if wc_mode == "L":
                             wc_pl[i] = self.replace_wildcard(wc_split[-2], 0, int(wc_split[-1]), p.all_seeds[j], wc_ptype, wc_mode)
                         if wca_osep in wc_pl[i]:
@@ -334,4 +314,3 @@ If you want to change the directory of your wildcards from the wildcards folder 
             if inc_hrneg:
                 if o_hrnegprompt != p.all_hr_negative_prompts[0]:
                     p.extra_generation_params["Wildcard HR neg prompt"] = o_hrnegprompt
-
