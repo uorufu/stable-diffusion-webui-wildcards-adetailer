@@ -231,7 +231,6 @@ If you want to change the directory of your wildcards from the wildcards folder 
                             if self.filecheck(wc_sl) == True:
                                 wc_mode = "N"
                             else:
-                                print(wc_split)
                                 wc_mode = self.wc_error(wc_split[1], 1, wca_osep)
                         if wca_isep in wc_sl:
                             if len(wc_split) == 2:
@@ -240,13 +239,11 @@ If you want to change the directory of your wildcards from the wildcards folder 
                                         if int(wc_split[0]) in range (0,99):
                                             wc_mode = "T"
                                     else:
-                                        print(wc_split)
                                         wc_mode = self.wc_error(wc_split[1], 1, wca_osep)
                                 if wc_split[0] == wca_iter:
                                     if self.filecheck(wc_split[1]) == True:
                                         wc_mode = "I"
                                     else:
-                                        print(wc_split)
                                         wc_mode = self.wc_error(wc_split[1], 1, wca_osep)
                             if 2 <= len(wc_split) <= 3:
                                 if wc_split[-1].isdigit():
@@ -314,3 +311,4 @@ If you want to change the directory of your wildcards from the wildcards folder 
             if inc_hrneg:
                 if o_hrnegprompt != p.all_hr_negative_prompts[0]:
                     p.extra_generation_params["Wildcard HR neg prompt"] = o_hrnegprompt
+
