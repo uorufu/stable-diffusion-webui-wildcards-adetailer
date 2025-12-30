@@ -29,7 +29,7 @@ class WildcardsScript(scripts.Script):
                 with gr.Row():
                     wca_enabled = gr.Checkbox(scale=2, label="Enable lock", value=False, elem_id=elem+"enabled")
                 with gr.Row():
-                    wca_seed = gr.Number(scale=1, label="Seed:", value="", visible=False, elem_id=elem+"seed")
+                    wca_seed = gr.Number(scale=1, label="Seed:", visible=False, elem_id=elem+"seed")
                 with gr.Row():
                     wca_tierlockmethod = gr.Radio(["Unlock", "Lock"], scale=1, label=" ", value="Unlock", visible=False, elem_id=elem+"tierlockmethod")
                     wca_tierlock = gr.Textbox(scale=3, label=" ", value="#,#,#...", visible=False, elem_id=elem+"tierlock")
@@ -311,4 +311,5 @@ If you want to change the directory of your wildcards from the wildcards folder 
             if inc_hrneg:
                 if o_hrnegprompt != p.all_hr_negative_prompts[0]:
                     p.extra_generation_params["Wildcard HR neg prompt"] = o_hrnegprompt
+
 
