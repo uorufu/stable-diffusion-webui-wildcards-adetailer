@@ -29,14 +29,14 @@ class WildcardsScript(scripts.Script):
                 with gr.Row():
                     wca_enabled = gr.Checkbox(scale=2, label="Enable lock", value=False, elem_id=elem+"enabled")
                 with gr.Row():
-                    wca_seed = gr.Number(scale=1, label="Seed:", visible=False, elem_id=elem+"seed")
+                    wca_seed = gr.Number(scale=1, label="Seed", value=False, visible=False, elem_id=elem+"seed")
                 with gr.Row():
-                    wca_tierlockmethod = gr.Radio(["Unlock", "Lock"], scale=1, label=" ", value="Unlock", visible=False, elem_id=elem+"tierlockmethod")
-                    wca_tierlock = gr.Textbox(scale=3, label=" ", value="#,#,#...", visible=False, elem_id=elem+"tierlock")
+                    wca_tierlockmethod = gr.Radio(["Unlock", "Lock"], scale=1, label="Unlock or Lock only Specified Tiers", value="Unlock", visible=False, elem_id=elem+"tierlockmethod")
+                    wca_tierlock = gr.Textbox(scale=2, label="Specified Tiers", value="#,#,#...", visible=False, elem_id=elem+"tierlock")
                 with gr.Row():
-                    wca_osep = gr.Textbox(label="Outer Separator:", value="__", elem_id=elem+"osep")
-                    wca_isep = gr.Textbox(label="Inner Separator:", value="_", elem_id=elem+"isep")
-                    wca_iter = gr.Textbox(label="Iteration Symbol:", value="$", elem_id=elem+"iter")
+                    wca_osep = gr.Textbox(label="Outer Separator", value="__", elem_id=elem+"osep")
+                    wca_isep = gr.Textbox(label="Inner Separator", value="_", elem_id=elem+"isep")
+                    wca_iter = gr.Textbox(label="Iteration Symbol", value="$", elem_id=elem+"iter")
                 with gr.Accordion('More info about Wildcards for Adetailer', open=False, elem_id=elem+'help'):
                     gr.Markdown('''
 ## Methods:
@@ -311,5 +311,3 @@ If you want to change the directory of your wildcards from the wildcards folder 
             if inc_hrneg:
                 if o_hrnegprompt != p.all_hr_negative_prompts[0]:
                     p.extra_generation_params["Wildcard HR neg prompt"] = o_hrnegprompt
-
-
